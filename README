@@ -1,0 +1,4 @@
+NagiosPlugin provides a Nagios Plugin base class that can be used to evaluate ranges and format results.
+
+For example use, see examples/example.py.
+# ./example.py 

@@ -48,56 +48,51 @@ class NagiosPlugin:
     def parseRange(self, nrange):
         """Parse range according to Nagios plugin syntax.
         
-        see http://nagiosplug.sourceforge.net/developer-guidelines.html#THRESHOLDFORMAT
-        Returns a tuple (lt, gt, draw_val)
-		This tuple can be passed to checkVal to check whether the status is critical or not.
-		draw_val is for the performance output, and will only be set if we have a simple value for the range.
+        see
+        http://nagiosplug.sourceforge.net/developer-guidelines.html#THRESHOLDFORMAT
+        Returns a tuple (evaluator, draw_val)
+
+        evaluator is a function which return true if it is passed
+        a critical value
+
+        draw_val is for the performance output, and will only be set if we
+        have a simple value for the range.
         
         Example: 
             >>> parseRange("5:10")
-            (5, 10, False)
+            (evaluator, False)
 
         """
         inf = float('inf')
         nan = float('nan')
         # 5
-
         val = re.match('(\d+\.?\d*)$', nrange)
         if val:
             minval = float(val.groups()[0])
-            return (0, minval, minval)
+            return (lambda x: x > minval, minval)
         # 5:
         val = re.match('(\d+\.?\d*):$', nrange)
         if val:
             minval = float(val.groups()[0])
-            return (minval, inf, minval)
+            return (lambda x: x < minval, minval)
         # ~:5
         val = re.match('~:(\d+\.?\d*)$', nrange)
         if val:
             maxval = float(val.groups()[0])
-            return (-inf, maxval, maxval)
+            return (lambda x: x > maxval, maxval)
         # 10:20
         val = re.match('(\d+\.?\d*):(\d+\.?\d*)$', nrange)
         if val:
             minval = float(val.groups()[0])
             maxval = float(val.groups()[1])
-            return (minval, maxval, nan)
+            return (lambda x: x < minval or x > maxval, nan)
         # @10:20
         val = re.match('@(\d+\.?\d*):(\d+\.?\d*)$', nrange)
         if val:
             minval = float(val.groups()[0])
             maxval = float(val.groups()[1])
-            return (maxval, minval, nan)
+            return (lambda x: x <= maxval and x >= minval, nan)
         raise NagiosRangeException("Invalid range: %s" %nrange)
-    
-    def checkVal(self, val, nrange):
-        """Return true if the value is within the range, eg non critical, false otherwise.
-
-        nrange should be a range such as output by parseRange().
-
-"""
-        low, high = nrange[0:2]
-        return not (val < low or val > high)
 
     def format(self, results):
         """Returns an exit status and a formatted output string.
